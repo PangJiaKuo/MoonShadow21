@@ -1,0 +1,24 @@
+{
+  "name": "moonshadow-21",
+  "version": "0.1.0",
+  "private": true,
+  "description": "《月影二十一》多人在线魔改21点卡牌游戏 - monorepo（shared / engine / client / server）",
+  "workspaces": [
+    "shared",
+    "engine",
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w client",
+    "build:server": "npm run build -w server",
+    "test": "npm run test -w engine && npm run test -w server",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.64.0",
+    "rollup": "^4.64.0"
+  }
+}

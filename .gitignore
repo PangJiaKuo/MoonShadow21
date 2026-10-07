@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# test / coverage
+coverage/
+
+# local data (SQLite etc.)
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# env
+.env
+.env.local
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*
