@@ -141,6 +141,31 @@ npm run build             # 前端生产构建（dist/）
 > 阶段 4 / 4.5 REST API（前缀 `http://localhost:4000/api`）：
 > `POST /auth/register`、`POST /auth/login`、`GET /auth/me`、`POST /auth/logout`、`GET /cards`（公开，可选 Bearer 显示拥有数）、`GET /collection`（需 Bearer）、`GET /deck`（需 Bearer，个人卡组）、`GET /shop`（需 Bearer，商城商品）、`POST /shop/buy`（需 Bearer，body `{cardId}`，购买入拥有区）、`POST /deck/equip`（需 Bearer，body `{cardId, targetCardId}`，装备替换同点数卡）。
 
+### 构建 Android APK（Capacitor + GitHub Actions）
+
+本项目前端是 React + Vite 网页应用。用 **Capacitor** 将其封装为 Android App，并用 **GitHub Actions** 自动构建 APK：
+
+1. **本地一次性配置**（已完成）：
+   - `client` 已安装 `@capacitor/core`、`@capacitor/cli`、`@capacitor/android`
+   - `client/capacitor.config.ts`：`appId=com.moon21.game`、`appName=月影二十一`、`webDir=dist`
+   - Android 平台工程在 `client/android/`（已 `npx cap add android`）
+
+2. **本地手动构建**（需本机有 Android SDK + JDK 17）：
+   ```bash
+   cd client
+   npm run build              # 先构建 web 产物到 dist
+   npx cap sync android       # 同步到 Android 工程
+   cd android && ./gradlew :app:assembleDebug
+   # APK 输出：client/android/app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+3. **GitHub Actions 自动构建**：已提供 `.github/workflows/build-apk.yml`
+   - 推送到 `main` 分支或手动 `workflow_dispatch` 触发
+   - 自动完成：npm ci → 构建前端 → `cap sync android` → `gradlew assembleDebug`
+   - 产物以 artifact `moon21-apk` 上传，在 Actions 运行页「Artifacts」下载
+
+> **当前 APK 为单机版**：原生环境下隐藏「在线对战 / 登录 / 卡组 / 商城 / 收藏」入口（`client/src/isNative.ts` 检测 `window.Capacitor`），仅保留**热座（2-8 人）**和**人机对战**。等后端部署到公网后，把联机后端地址写入 `VITE_SERVER_URL` / `VITE_API_URL` 再构建即可启用联机；同时移除 `Menu.tsx` / `App.tsx` 中 `!native` 的隐藏逻辑。
+
 ## 五、玩法规则
 
 ### 基础规则
@@ -167,13 +192,13 @@ npm run build             # 前端生产构建（dist/）
 |---|---|---|---|
 | 银月 | 传说 | OnDraw | 将此牌点数设为 1-5 |
 | 蒸汽核心 | 史诗 | OnDraw | 手牌全为太阳时设为 9 或 10 |
-| 替身 | 稀有 | OnDraw | 与对手一张暗牌互换 |
+| 替身 | 稀有 | OnDraw | 与上一家一张暗牌互换 |
 | 命运硬币 | 稀有 | OnDraw | 弃一张手牌并重抽一张 |
-| 沉默 | 史诗 | Passive | 对手特殊卡效果无效 |
+| 沉默 | 史诗 | Passive | 上一家特殊卡效果无效 |
 | 双生 | 传说 | OnDraw | 拆成两张点数减半的牌 |
 | 回溯 | 稀有 | OnStand | 停牌时弃一张重抽（仍停牌） |
 | 赌徒 | 史诗 | OnDraw | 声明加倍：未爆则总点数×2，爆则出局 |
-| 守夜人 | 传说 | OnCompare | 对手 21 点时强制其重抽 |
+| 守夜人 | 传说 | OnCompare | 上一家 21 点时强制其重抽 |
 | 皇帝密令 | 史诗 | OnDraw | 点数固定 13，本回合必须抽牌 |
 
 ### 联机系统（阶段 3）

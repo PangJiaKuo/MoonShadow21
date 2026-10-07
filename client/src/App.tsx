@@ -11,6 +11,7 @@ import { CatalogPage } from './components/CatalogPage';
 import { CollectionPage } from './components/CollectionPage';
 import { DeckPage } from './components/DeckPage';
 import { ShopPage } from './components/ShopPage';
+import { isNative } from './isNative';
 
 export default function App() {
   const screen = useGameStore((s) => s.screen);
@@ -25,6 +26,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // 单机 APK（Capacitor 原生）环境：无后端，跳过联机 socket 初始化与断线重连
+    if (isNative()) return;
     const s = getSocket();
     const onState = (room: RoomState) => {
       useGameStore.setState((st) => ({
