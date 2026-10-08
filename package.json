@@ -18,7 +18,9 @@
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
-    "@rollup/rollup-win32-x64-msvc": "^4.64.0",
     "rollup": "^4.64.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.64.0"
   }
 }
