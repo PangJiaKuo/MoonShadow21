@@ -34,8 +34,9 @@ jobs:
           yes | "$SM" --licenses > /dev/null 2>&1 || true
           yes | "$SM" "platforms;android-36" "build-tools;36.0.0"
 
+      # package.json 改动后需重新解析 lock，用 install 而非 ci
       - name: Install dependencies (monorepo)
-        run: npm ci
+        run: npm install
 
       - name: Build web assets
         run: npm run build --workspace @moon21/client
