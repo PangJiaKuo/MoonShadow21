@@ -3,6 +3,7 @@ import type { CollectionCard } from '@moon21/shared';
 import { api } from '../net/api';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGameStore } from '../store/useGameStore';
+import { CARD_ART } from '../cardArt';
 
 const RARITY: Record<string, { tag: string; text: string; ring: string }> = {
   common: { tag: '普通', text: 'text-parchment/70', ring: 'ring-parchment/40' },
@@ -62,19 +63,27 @@ export function CollectionPage() {
               return (
                 <div
                   key={c.cardId}
-                  className={`card-face rounded-xl p-3 gold-frame ring-1 ${r?.ring ?? 'ring-parchment/30'}`}
+                  className={`card-face relative overflow-hidden rounded-xl p-3 gold-frame ring-1 ${r?.ring ?? 'ring-parchment/30'}`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-display text-gold text-sm">「{c.name}」</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full border border-current ${r?.text ?? ''}`}>
-                      {r?.tag ?? ''}
-                    </span>
+                  {CARD_ART[c.cardId] && (
+                    <>
+                      <img src={CARD_ART[c.cardId]} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+                      <div className="absolute inset-0 bg-abyss/40" />
+                    </>
+                  )}
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-display text-gold text-sm">「{c.name}」</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full border border-current ${r?.text ?? ''}`}>
+                        {r?.tag ?? ''}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-parchment/50 mb-1">{c.series}</div>
+                    <div className="text-[11px] text-parchment/80 leading-snug line-clamp-3 min-h-[2.5rem]">
+                      {c.description ?? '—'}
+                    </div>
+                    <div className="mt-1.5 text-[11px] text-brass">拥有 ×{c.count}</div>
                   </div>
-                  <div className="text-[10px] text-parchment/50 mb-1">{c.series}</div>
-                  <div className="text-[11px] text-parchment/80 leading-snug line-clamp-3 min-h-[2.5rem]">
-                    {c.description ?? '—'}
-                  </div>
-                  <div className="mt-1.5 text-[11px] text-brass">拥有 ×{c.count}</div>
                 </div>
               );
             })}

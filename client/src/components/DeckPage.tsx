@@ -4,6 +4,7 @@ import { buildBaseDeckDefs } from '@moon21/engine';
 import { api } from '../net/api';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGameStore } from '../store/useGameStore';
+import { CARD_ART, SUIT_ART } from '../cardArt';
 
 const RARITY: Record<string, { tag: string; text: string; ring: string }> = {
   common: { tag: '普通', text: 'text-parchment/70', ring: 'ring-parchment/40' },
@@ -133,26 +134,35 @@ export function DeckPage() {
                       return (
                         <div
                           key={c.cardId}
-                          className={`card-face rounded-lg p-2.5 gold-frame ring-1 flex flex-col items-center ${r?.ring ?? 'ring-amber-400/80'} ${isSelected ? 'ring-2 ring-brass bg-brass/10' : ''}`}
+                          className={`card-face relative overflow-hidden rounded-lg p-2.5 gold-frame ring-1 flex flex-col items-center ${r?.ring ?? 'ring-amber-400/80'} ${isSelected ? 'ring-2 ring-brass bg-brass/10' : ''}`}
                         >
-                          <span className="font-display text-gold text-sm leading-tight text-center">「{c.name}」</span>
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-current mt-1 ${r?.text ?? ''}`}>
-                            {r?.tag ?? ''}
-                          </span>
-                          <span className="text-[10px] text-parchment/50 mt-0.5">{c.baseValue} 点</span>
-                          <button
-                            onClick={() => setSelected(isIn ? null : isSelected ? null : c)}
-                            disabled={isIn}
-                            className={`mt-1.5 w-full py-1 rounded-md text-[11px] transition ${
-                              isIn
-                                ? 'bg-felt text-parchment/40 cursor-not-allowed'
-                                : isSelected
-                                  ? 'bg-brass text-abyss'
-                                  : 'gold-frame text-gold hover:bg-brass/20'
-                            }`}
-                          >
-                            {isIn ? '已在卡组' : isSelected ? '已选中' : '装备'}
-                          </button>
+                          <img
+                            src={CARD_ART[c.cardId] ?? '/cards/silver_moon.jpg'}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover"
+                            draggable={false}
+                          />
+                          <div className="absolute inset-0 bg-abyss/40" />
+                          <div className="relative z-10 w-full flex flex-col items-center">
+                            <span className="font-display text-gold text-sm leading-tight text-center">「{c.name}」</span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-current mt-1 ${r?.text ?? ''}`}>
+                              {r?.tag ?? ''}
+                            </span>
+                            <span className="text-[10px] text-parchment/50 mt-0.5">{c.baseValue} 点</span>
+                            <button
+                              onClick={() => setSelected(isIn ? null : isSelected ? null : c)}
+                              disabled={isIn}
+                              className={`mt-1.5 w-full py-1 rounded-md text-[11px] transition ${
+                                isIn
+                                  ? 'bg-felt text-parchment/40 cursor-not-allowed'
+                                  : isSelected
+                                    ? 'bg-brass text-abyss'
+                                    : 'gold-frame text-gold hover:bg-brass/20'
+                              }`}
+                            >
+                              {isIn ? '已在卡组' : isSelected ? '已选中' : '装备'}
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -175,26 +185,43 @@ export function DeckPage() {
                     key={c.cardId}
                     onClick={() => t && equip(c)}
                     title={t ? `点击替换为「${selected!.name}」` : undefined}
-                    className={`card-face rounded-lg p-2.5 gold-frame ring-1 flex flex-col items-center transition ${
+                    className={`card-face relative overflow-hidden rounded-lg p-2.5 gold-frame ring-1 flex flex-col items-center transition ${
                       c.base ? 'ring-parchment/20' : `ring-1 ${r?.ring ?? 'ring-amber-400/80'}`
                     } ${t ? 'ring-2 ring-brass bg-brass/10 cursor-pointer hover:scale-105' : ''}`}
                   >
-                    {c.base ? (
-                      <>
-                        <span className="text-lg leading-none">{SUIT_ICON[c.suit] ?? ''}</span>
-                        <span className="font-display text-gold text-lg mt-0.5">{c.rank}</span>
-                        <span className="text-[10px] text-parchment/50">{c.value} 点</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-display text-gold text-sm leading-tight text-center">「{c.name}」</span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-current mt-1 ${r?.text ?? ''}`}>
-                          {r?.tag ?? ''}
-                        </span>
-                        <span className="text-[10px] text-parchment/50 mt-0.5">{c.value} 点</span>
-                      </>
-                    )}
-                    {t && <span className="mt-1 text-[10px] text-brass">可替换</span>}
+                    {(() => {
+                      const art = c.base ? SUIT_ART[c.suit] : CARD_ART[c.cardId] ?? '/cards/silver_moon.jpg';
+                      if (!art) return null;
+                      return (
+                        <>
+                          <img
+                            src={art}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover"
+                            draggable={false}
+                          />
+                          <div className="absolute inset-0 bg-abyss/40" />
+                        </>
+                      );
+                    })()}
+                    <div className="relative z-10 w-full flex flex-col items-center">
+                      {c.base ? (
+                        <>
+                          <span className="text-lg leading-none">{SUIT_ICON[c.suit] ?? ''}</span>
+                          <span className="font-display text-gold text-lg mt-0.5">{c.rank}</span>
+                          <span className="text-[10px] text-parchment/50">{c.value} 点</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-display text-gold text-sm leading-tight text-center">「{c.name}」</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-current mt-1 ${r?.text ?? ''}`}>
+                            {r?.tag ?? ''}
+                          </span>
+                          <span className="text-[10px] text-parchment/50 mt-0.5">{c.value} 点</span>
+                        </>
+                      )}
+                      {t && <span className="mt-1 text-[10px] text-brass">可替换</span>}
+                    </div>
                   </div>
                 );
               })}

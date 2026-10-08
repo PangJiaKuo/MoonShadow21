@@ -3,6 +3,7 @@ import type { ShopItem } from '@moon21/shared';
 import { api } from '../net/api';
 import { useAuthStore } from '../store/useAuthStore';
 import { useGameStore } from '../store/useGameStore';
+import { CARD_ART } from '../cardArt';
 
 const RARITY: Record<string, { tag: string; text: string; ring: string }> = {
   common: { tag: '普通', text: 'text-parchment/70', ring: 'ring-parchment/40' },
@@ -98,29 +99,37 @@ export function ShopPage() {
               {items.map((c) => {
                 const r = RARITY[c.rarity];
                 return (
-                  <div key={c.cardId} className={`card-face rounded-xl p-4 gold-frame ring-1 ${r?.ring ?? 'ring-parchment/30'}`}>
-                    <div className="flex items-start justify-between mb-1">
-                      <div>
-                        <span className="font-display text-gold text-base">「{c.name}」</span>
-                        <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full border border-current ${r?.text ?? ''}`}>
-                          {r?.tag ?? ''}
-                        </span>
+                  <div key={c.cardId} className={`card-face relative overflow-hidden rounded-xl p-4 gold-frame ring-1 ${r?.ring ?? 'ring-parchment/30'}`}>
+                    {CARD_ART[c.cardId] && (
+                      <>
+                        <img src={CARD_ART[c.cardId]} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
+                        <div className="absolute inset-0 bg-abyss/40" />
+                      </>
+                    )}
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-1">
+                        <div>
+                          <span className="font-display text-gold text-base">「{c.name}」</span>
+                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full border border-current ${r?.text ?? ''}`}>
+                            {r?.tag ?? ''}
+                          </span>
+                        </div>
+                        <span className="text-sm text-gold whitespace-nowrap">{c.price} 金币</span>
                       </div>
-                      <span className="text-sm text-gold whitespace-nowrap">{c.price} 金币</span>
+                      <div className="text-[10px] text-parchment/50 mb-1">
+                        {c.series} · {c.value} 点
+                      </div>
+                      <div className="text-[12px] text-parchment/80 leading-snug min-h-[2.5rem]">{c.description ?? '—'}</div>
+                      <button
+                        onClick={() => buy(c.cardId)}
+                        disabled={c.owned || busyId === c.cardId}
+                        className={`mt-2 w-full py-2 rounded-lg text-sm font-display tracking-widest transition ${
+                          c.owned ? 'bg-felt text-parchment/40 cursor-not-allowed' : 'gold-frame text-gold hover:bg-brass/20 active:scale-95'
+                        }`}
+                      >
+                        {c.owned ? '已在卡组' : busyId === c.cardId ? '购买中…' : '购买并放入卡组'}
+                      </button>
                     </div>
-                    <div className="text-[10px] text-parchment/50 mb-1">
-                      {c.series} · {c.value} 点
-                    </div>
-                    <div className="text-[12px] text-parchment/80 leading-snug min-h-[2.5rem]">{c.description ?? '—'}</div>
-                    <button
-                      onClick={() => buy(c.cardId)}
-                      disabled={c.owned || busyId === c.cardId}
-                      className={`mt-2 w-full py-2 rounded-lg text-sm font-display tracking-widest transition ${
-                        c.owned ? 'bg-felt text-parchment/40 cursor-not-allowed' : 'gold-frame text-gold hover:bg-brass/20 active:scale-95'
-                      }`}
-                    >
-                      {c.owned ? '已在卡组' : busyId === c.cardId ? '购买中…' : '购买并放入卡组'}
-                    </button>
                   </div>
                 );
               })}
