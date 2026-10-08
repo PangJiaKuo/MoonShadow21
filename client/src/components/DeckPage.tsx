@@ -66,6 +66,22 @@ export function DeckPage() {
 
   const canTarget = (card: DeckCard) => !!selected && card.value === selected.baseValue;
 
+  const unequip = async (cardId: string) => {
+    if (!token) return;
+    setMsg('');
+    try {
+      const r = await api.unequip(token, { cardId });
+      if (r.ok) {
+        if (r.cards) setDeckCards(r.cards);
+        setMsg('已取消装备：特殊卡移出卡组，已补回一张同点数普通牌');
+      } else {
+        setMsg(r.error ?? '取消装备失败');
+      }
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+  };
+
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-5xl mx-auto">
@@ -218,6 +234,15 @@ export function DeckPage() {
                             {r?.tag ?? ''}
                           </span>
                           <span className="text-[10px] text-parchment/50 mt-0.5">{c.value} 点</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              unequip(c.cardId);
+                            }}
+                            className="mt-1 w-full py-1 rounded-md text-[11px] border border-crimson/50 text-crimson/80 hover:bg-crimson/15 transition"
+                          >
+                            取消装备
+                          </button>
                         </>
                       )}
                       {t && <span className="mt-1 text-[10px] text-brass">可替换</span>}

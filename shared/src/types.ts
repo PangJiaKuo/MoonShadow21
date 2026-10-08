@@ -395,6 +395,12 @@ export interface DeckEquipRequest {
   targetCardId: string;
 }
 
+/** 取消装备：把已放入卡组的特殊卡移除，并补回一张同点数普通卡 */
+export interface DeckUnequipRequest {
+  /** 卡组中要移除的特殊卡 id */
+  cardId: string;
+}
+
 export interface DeckEquipResponse {
   ok: boolean;
   cards?: DeckCard[];

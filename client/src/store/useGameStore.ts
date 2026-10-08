@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameAction, GameMode, GameState, RoomCreateRequest, RoomState } from '@moon21/shared';
+import type { CardInstance, GameAction, GameMode, GameState, RoomCreateRequest, RoomState } from '@moon21/shared';
 import { apply, buildBaseDeckDefs, createGame, nextRound as engineNextRound, SPECIAL_CARDS } from '@moon21/engine';
 import { net, clearRoom, saveRoom } from '../net/socket';
 import { useAuthStore } from './useAuthStore';
@@ -16,6 +16,9 @@ interface GameStore {
   aiPlayerId: string | null;
   /** 本客户端人类控制的 engine 座位 id；本地热座（双方同机操作）为 null */
   myEngineId: string | null;
+  /** 最近一次抽牌摸到的特殊卡（抽到特殊牌时先展示牌与技能），无则为 null */
+  drawnSpecial: CardInstance | null;
+  dismissDrawnSpecial: () => void;
 
   // 联机
   online: boolean;
@@ -56,6 +59,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   onlineError: null,
   aiPlayerId: null,
   myEngineId: null,
+  drawnSpecial: null,
 
   startGame: (names, enableRoyals, enableSpecialCards, aiP1 = false, mode: GameMode = 'duel') => {
     const playerCount = names.length;
@@ -81,6 +85,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       online: false,
       aiPlayerId: aiP1 ? 'p1' : null,
       myEngineId: aiP1 ? 'p0' : null,
+      drawnSpecial: null,
     });
   },
 
@@ -91,7 +96,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
     const { game } = get();
     if (!game) return;
-    set({ game: apply(game, action, true) });
+    const next = apply(game, action, true);
+    // 抽牌后若摸到特殊卡，记录用于"抽到特殊牌"展示
+    let drawnSpecial: CardInstance | null = null;
+    if (action.type === 'hit') {
+      const myId = get().myEngineId;
+      // 热座(myEngineId=null)展示所有行动者；联机/人机只展示自己抽到的
+      if (myId === null || action.playerId === myId) {
+        const p = next.players.find((x) => x.id === action.playerId);
+        const last = p?.hand[p.hand.length - 1];
+        if (last?.rarity) drawnSpecial = last;
+      }
+    }
+    set({ game: next, drawnSpecial });
   },
 
   nextRound: () => {
@@ -104,10 +121,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ game: engineNextRound(game) });
   },
 
+  dismissDrawnSpecial: () => set({ drawnSpecial: null }),
+
   backToMenu: () => {
     if (get().online) net.leave();
     clearRoom();
-    set({ screen: 'menu', game: null, roomState: null, online: false, meId: null, myEngineId: null, aiPlayerId: null, onlineError: null });
+    set({ screen: 'menu', game: null, roomState: null, online: false, meId: null, myEngineId: null, aiPlayerId: null, onlineError: null, drawnSpecial: null });
   },
 
   setScreen: (s) => set({ screen: s }),

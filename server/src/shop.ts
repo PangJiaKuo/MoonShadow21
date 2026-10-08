@@ -5,7 +5,7 @@
  */
 import { Router } from 'express';
 import { authRequired } from './auth';
-import { buySpecialCard, equipSpecialCard, getDeckCards, getShop } from './db';
+import { buySpecialCard, equipSpecialCard, getDeckCards, getShop, unequipSpecialCard } from './db';
 
 export function createShopRouter(): Router {
   const router = Router();
@@ -39,6 +39,18 @@ export function createShopRouter(): Router {
       return res.status(400).json({ ok: false, error: '缺少 cardId / targetCardId' });
     }
     const r = equipSpecialCard(userId, cardId, targetCardId);
+    if (!r.ok) return res.status(400).json(r);
+    return res.json(r);
+  });
+
+  // 取消装备：把特殊卡移出卡组
+  router.post('/deck/unequip', authRequired, (req, res) => {
+    const userId = (req as { user?: { id: string } }).user!.id;
+    const { cardId } = (req.body ?? {}) as { cardId?: string };
+    if (!cardId || typeof cardId !== 'string') {
+      return res.status(400).json({ ok: false, error: '缺少 cardId' });
+    }
+    const r = unequipSpecialCard(userId, cardId);
     if (!r.ok) return res.status(400).json(r);
     return res.json(r);
   });

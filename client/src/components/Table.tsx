@@ -7,6 +7,7 @@ import { ActionBar } from './ActionBar';
 import { ResultOverlay } from './ResultOverlay';
 import { PendingModal } from './PendingModal';
 import { CardDetailModal } from './CardDetailModal';
+import { SpecialDrawModal } from './SpecialDrawModal';
 
 export function Table() {
   const game = useGameStore((s) => s.game)!;
@@ -14,6 +15,8 @@ export function Table() {
   const aiPlayerId = useGameStore((s) => s.aiPlayerId);
   const myEngineId = useGameStore((s) => s.myEngineId);
   const dispatch = useGameStore((s) => s.dispatch);
+  const drawnSpecial = useGameStore((s) => s.drawnSpecial);
+  const dismissDrawnSpecial = useGameStore((s) => s.dismissDrawnSpecial);
   const inReveal = game.phase !== 'playing';
   const [inspected, setInspected] = useState<{ card: CardInstance; owner: string } | null>(null);
 
@@ -30,15 +33,16 @@ export function Table() {
     return () => clearTimeout(t);
   }, [game, aiPlayerId, online, dispatch]);
 
-  // 自己放在底部，其余玩家放顶部（联机/人机按我的座位定位；热座 p0 为底部）
+  // 自己放在底部，其余玩家放顶部（联机/人机按我的座位定位；热座轮到谁就把谁放底部主区域）
   let bottom: typeof game.players[number];
   let others: typeof game.players[number][];
   if (myEngineId) {
     bottom = game.players.find((p) => p.id === myEngineId) ?? game.players[0];
     others = game.players.filter((p) => p.id !== bottom.id);
   } else {
-    bottom = game.players[0];
-    others = game.players.slice(1);
+    // 热座：轮到谁行动，就把谁的牌放到底部主页面
+    bottom = game.players.find((p) => p.isTurn) ?? game.players[0];
+    others = game.players.filter((p) => p.id !== bottom.id);
   }
   // 联机/人机时自己看自己全部牌、对手暗牌保密；热座同屏按当前行动者翻开
   const solo = myEngineId !== null;
@@ -46,6 +50,10 @@ export function Table() {
   // 每个人只能看到自己这一方的总点数；对手总点数隐藏（明牌牌面仍可见，结算揭晓）
   const canSeeScore = (p: (typeof game.players)[number]) =>
     solo ? p.id === bottom.id || inReveal : p.isTurn || inReveal;
+  // 抽到的特殊牌属于哪家（用于展示持有者）
+  const drawnOwner = drawnSpecial
+    ? game.players.find((p) => p.hand.some((c) => c.uid === drawnSpecial.uid))?.name ?? ''
+    : '';
 
   return (
     <div className="relative flex flex-col h-screen p-3 gap-2 max-w-5xl mx-auto">
@@ -104,6 +112,11 @@ export function Table() {
 
       {/* 特殊卡效果决策模态框 */}
       <PendingModal game={game} />
+
+      {/* 抽到特殊牌：先展示牌与技能效果，点"继续"再进入后续流程 */}
+      {drawnSpecial && (
+        <SpecialDrawModal card={drawnSpecial} ownerName={drawnOwner} onContinue={dismissDrawnSpecial} />
+      )}
 
       {/* 点击特殊卡查看技能详情 */}
       {inspected && (

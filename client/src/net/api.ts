@@ -10,6 +10,7 @@ import type {
   DeckEquipRequest,
   DeckEquipResponse,
   DeckResponse,
+  DeckUnequipRequest,
   LoginRequest,
   RegisterRequest,
   ShopResponse,
@@ -45,4 +46,5 @@ export const api = {
   shop: (token: string) => request<ShopResponse>('/shop', { token }),
   buy: (token: string, cardId: string) => request<BuyResponse>('/shop/buy', { method: 'POST', token, body: { cardId } }),
   equip: (token: string, body: DeckEquipRequest) => request<DeckEquipResponse>('/deck/equip', { method: 'POST', token, body }),
+  unequip: (token: string, body: DeckUnequipRequest) => request<DeckEquipResponse>('/deck/unequip', { method: 'POST', token, body }),
 };

@@ -362,3 +362,21 @@ export function equipSpecialCard(userId: string, cardId: string, targetCardId: s
   const cards = getDeckCards(userId).cards;
   return { ok: true, cards, size: cards.length, replacedCardId: targetCardId };
 }
+
+/** 取消装备：从卡组移除特殊卡，并补回一张同点数普通基础牌（保持卡组完整）。 */
+export function unequipSpecialCard(userId: string, cardId: string): DeckEquipResponse {
+  const sp = SPECIAL_CARDS.find((c) => c.id === cardId);
+  if (!sp) return { ok: false, error: '特殊卡不存在' };
+  const deck = ensureDeck(userId);
+  if (!deck.includes(cardId)) return { ok: false, error: '该特殊卡不在卡组中' };
+  // 移除特殊卡，并补回一张同点数、未在卡组中的普通基础牌（原位插入，保持卡组顺序）
+  const idx = deck.indexOf(cardId);
+  const newDeck = deck.filter((id) => id !== cardId);
+  const candidate = BASE_DEFS.find((d) => d.baseValue === sp.baseValue && !newDeck.includes(d.id));
+  if (candidate) newDeck.splice(idx, 0, candidate.id);
+  getDb()
+    .prepare('UPDATE decks SET card_ids_json = ? WHERE user_id = ? AND is_default = 1')
+    .run(JSON.stringify(newDeck), userId);
+  const cards = getDeckCards(userId).cards;
+  return { ok: true, cards, size: cards.length };
+}
