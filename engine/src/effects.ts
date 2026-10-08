@@ -355,6 +355,8 @@ export function resolveDecision(g: GameState, action: Extract<GameAction, { type
   ) {
     card.value = 0;
     card.pendingValue = false;
+    // 重算总分：不使用的特殊卡按 0 点计，分数不再包含其 baseValue
+    me.score = scoreOf(me.hand);
     me.flags.unresolvedDraw = me.flags.unresolvedDraw.filter((u) => u !== card.uid);
     if (pd.effectType === 'fixedValue') me.flags.mustHit = false;
     g.log.push(`${me.name} 不使用 ${card.name} 的效果`);

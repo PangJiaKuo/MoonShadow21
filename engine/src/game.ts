@@ -17,6 +17,7 @@ import type {
   GameConfig,
   GameState,
   PlayerState,
+  PlayerTurnStage,
   PendingDecision,
   RoundResultReason,
 } from '@moon21/shared';
@@ -105,6 +106,7 @@ export function createGame(names: string[], config?: Partial<GameConfig>, opts: 
       status: 'active',
       isTurn: i === 0,
       isHost: i === 0,
+      turnStage: 'awaitingAction' as const,
       flags: { unresolvedDraw: [], mustHit: false, doubled: false, used: {} },
       coins: 10,
       bet: 0,
@@ -153,6 +155,7 @@ function dealNewRound(game: GameState, rng: () => number, rotate: boolean): Game
     hand: [] as CardInstance[],
     status: 'active' as const,
     score: 0,
+    turnStage: 'awaitingAction' as const,
     flags: {
       unresolvedDraw: [] as string[],
       mustHit: false,
@@ -201,7 +204,11 @@ function dealNewRound(game: GameState, rng: () => number, rotate: boolean): Game
     phase: 'playing',
     deck,
     playerDeck: usePerDeck ? playerDeck : undefined,
-    players: players.map((p) => ({ ...p, isTurn: p.id === order[0] })),
+    players: players.map((p) => ({
+      ...p,
+      isTurn: p.id === order[0],
+      turnStage: p.id === order[0] ? 'awaitingAction' : 'stood',
+    })),
     currentPlayerIndex: turnIndex >= 0 ? turnIndex : 0,
     roundResult: undefined,
     log: [...game.log, `第 ${game.round} 轮发牌完毕，${order[0]} 先手`],
@@ -260,7 +267,11 @@ function advanceTurn(g: GameState): GameState {
       return {
         ...g,
         currentPlayerIndex: idx,
-        players: g.players.map((pl) => ({ ...pl, isTurn: pl.id === p.id })),
+        players: g.players.map((pl) => ({
+          ...pl,
+          isTurn: pl.id === p.id,
+          turnStage: pl.id === p.id ? 'awaitingAction' : 'stood',
+        })),
       };
     }
   }
@@ -392,6 +403,39 @@ export function nextRound(input: GameState): GameState {
   return dealNewRound(g, Math.random, input.config.mode === 'duel');
 }
 
+/**
+ * 玩家回合效果结算状态机：按阶段结算该玩家「当前可用」的特殊卡效果。
+ * 任何抽牌 / 设点之后统一经过这里，保证 OnDraw 特殊卡即使会导致爆牌，
+ * 也先弹出效果框（玩家可用效果调点数），杜绝效果被跳过/吃掉。
+ */
+function settlePlayerEffects(g: GameState, pid: string): GameState {
+  let cur = g;
+  const mark = (stage: PlayerTurnStage, base: GameState = cur) => ({
+    ...base,
+    players: base.players.map((p) => (p.id === pid ? { ...p, turnStage: stage } : p)),
+  });
+  let me = cur.players.find((p) => p.id === pid)!;
+  // 阶段1：结算 OnDraw 特殊卡队列；需要玩家选择则卡在 awaitingChoice（效果框弹出）
+  if (me.flags.unresolvedDraw.length > 0) {
+    const out = processUnresolvedDraw(cur, pid);
+    if (out.pending) return mark('awaitingChoice', out);
+    cur = out;
+    me = cur.players.find((p) => p.id === pid)!;
+  }
+  // 阶段2：待定皇家牌（皇帝/皇后）
+  if (hasPendingValue(me)) return mark('awaitingValue');
+  // 阶段3：效果已结算完毕，再判爆牌（先让玩家用效果调点数，不吞效果）
+  if (me.score > cur.config.targetScore) {
+    const stood = {
+      ...cur,
+      players: cur.players.map((p) => (p.id === pid ? { ...p, status: 'stood' as const, turnStage: 'stood' as const } : p)),
+    };
+    stood.log.push(`${me.name} 爆牌（${me.score}），自动停牌`);
+    return advanceTurn(stood);
+  }
+  return mark('awaitingAction');
+}
+
 /** 应用一个玩家动作。非法动作返回原状态（或抛出，取决于 strict）。 */
 export function apply(input: GameState, action: GameAction, strict = false): GameState {
   const g = cloneGame(input);
@@ -438,10 +482,15 @@ export function apply(input: GameState, action: GameAction, strict = false): Gam
     return input;
   }
 
-  // 2) 轮到该玩家时，先结算未处理的 OnDraw 特殊卡
+  // 2) 轮到该玩家时，先结算未处理的 OnDraw 特殊卡（同步回合阶段标记）
   if (player.flags.unresolvedDraw.length > 0) {
     const out = processUnresolvedDraw(g, player.id);
-    if (out.pending) return out;
+    if (out.pending) {
+      return {
+        ...out,
+        players: out.players.map((p) => (p.id === action.playerId ? { ...p, turnStage: 'awaitingChoice' as const } : p)),
+      };
+    }
   }
 
   // 3) 有待定点数牌（皇帝/皇后）时，只能 setValue
@@ -500,21 +549,9 @@ export function apply(input: GameState, action: GameAction, strict = false): Gam
       // 皇帝密令等 mustHit：抽完本回合可正常停牌
       if (player.flags.mustHit) player.flags.mustHit = false;
 
-      if (hasPendingValue(player)) {
-        // 抽到皇帝/皇后且未选点，等待 setValue
-        return g;
-      }
-      if (player.score > g.config.targetScore) {
-        // 新规则：爆牌不立即判负，自动停牌，等结算统一揭晓
-        player.status = 'stood';
-        g.log.push(`${player.name} 爆牌（${player.score}），自动停牌`);
-        return advanceTurn(g);
-      }
-      // 摸到特殊卡：立即触发 OnDraw 决策（视情况发动）
-      const pu = processUnresolvedDraw(g, player.id);
-      if (pu.pending) return pu;
-      // 未爆，继续当前玩家行动
-      return g;
+      // 统一走玩家回合效果结算状态机：先结算 OnDraw 特殊卡（可用效果调点数），
+      // 再处理待定皇家牌与爆牌 —— 杜绝「抽到特殊卡导致爆牌」被直接推进而吞掉效果
+      return settlePlayerEffects(g, player.id);
     }
     case 'setValue': {
       const target = player.hand.find((c) => c.uid === action.uid);
@@ -530,13 +567,8 @@ export function apply(input: GameState, action: GameAction, strict = false): Gam
       target.value = action.value;
       player.score = scoreOf(player.hand);
       g.log.push(`${player.name} 将 ${target.name} 设为 ${action.value} 点`);
-      if (player.score > g.config.targetScore) {
-        // 新规则：爆牌不立即判负，自动停牌，等结算统一揭晓
-        player.status = 'stood';
-        g.log.push(`${player.name} 爆牌（${player.score}），自动停牌`);
-        return advanceTurn(g);
-      }
-      return g; // 停在本玩家继续行动
+      // 统一走效果结算状态机：先结算未处理的 OnDraw 特殊卡，再判爆牌
+      return settlePlayerEffects(g, player.id);
     }
     case 'stand': {
       player.status = 'stood';

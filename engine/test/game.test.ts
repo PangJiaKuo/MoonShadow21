@@ -29,8 +29,8 @@ function makeGame(handA: CardInstance[], handB: CardInstance[], deck: CardInstan
     phase: 'playing',
     deck,
     players: [
-      { id: 'p0', name: '甲', seat: 0, hand: handA, score: handA.reduce((s, c) => s + (c.pendingValue ? 0 : c.value), 0), status: 'active', isTurn: true, isHost: true, flags: { unresolvedDraw: [], mustHit: false, doubled: false, used: {} }, coins: 0, bet: 0 },
-      { id: 'p1', name: '乙', seat: 1, hand: handB, score: handB.reduce((s, c) => s + (c.pendingValue ? 0 : c.value), 0), status: 'active', isTurn: false, isHost: false, flags: { unresolvedDraw: [], mustHit: false, doubled: false, used: {} }, coins: 0, bet: 0 },
+      { id: 'p0', name: '甲', seat: 0, hand: handA, score: handA.reduce((s, c) => s + (c.pendingValue ? 0 : c.value), 0), status: 'active', isTurn: true, isHost: true, turnStage: 'awaitingAction', flags: { unresolvedDraw: [], mustHit: false, doubled: false, used: {} }, coins: 0, bet: 0 },
+      { id: 'p1', name: '乙', seat: 1, hand: handB, score: handB.reduce((s, c) => s + (c.pendingValue ? 0 : c.value), 0), status: 'active', isTurn: false, isHost: false, turnStage: 'stood', flags: { unresolvedDraw: [], mustHit: false, doubled: false, used: {} }, coins: 0, bet: 0 },
     ],
     currentPlayerIndex: 0,
     round: 1,

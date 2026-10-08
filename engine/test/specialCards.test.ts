@@ -60,11 +60,13 @@ function makeGame(handA: CardInstance[], handB: CardInstance[] = [], opts: MakeO
       {
         id: 'p0', name: '甲', seat: 0, hand: handA, score: score(handA),
         status: standA ? 'stood' : 'active', isTurn: true, isHost: true,
+        turnStage: standA ? 'stood' : 'awaitingAction',
         flags: { unresolvedDraw: unresolvedA, mustHit: false, doubled: false, used: usedA }, coins: 0, bet: 0
       },
       {
         id: 'p1', name: '乙', seat: 1, hand: handB, score: score(handB),
         status: standB ? 'stood' : 'active', isTurn: false, isHost: false,
+        turnStage: standB ? 'stood' : 'stood',
         flags: { unresolvedDraw: unresolvedB, mustHit: false, doubled: false, used: {}, ...flagsB }, coins: 0, bet: 0
       },
     ],

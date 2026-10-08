@@ -98,6 +98,20 @@ export interface CardInstance {
 
 export type PlayerStatus = 'active' | 'stood' | 'busted';
 
+/**
+ * 玩家回合阶段（特殊卡效果结算状态机）。
+ * 保证任何行动前先结算「当前阶段可用」的特殊卡效果，杜绝效果被跳过/吃掉。
+ */
+export type PlayerTurnStage =
+  /** 可正常行动（抽牌 / 停牌 / 设点） */
+  | 'awaitingAction'
+  /** 等待特殊卡效果框选择（OnDraw 决策 pending 中） */
+  | 'awaitingChoice'
+  /** 等待皇帝/皇后选择点数 */
+  | 'awaitingValue'
+  /** 已停牌，等待推进回合 */
+  | 'stood';
+
 /** 玩家回合内标记（特殊卡机制使用） */
 export interface PlayerFlags {
   /** 待结算的 OnDraw 特殊卡 uid（轮到该玩家时逐个处理） */
@@ -120,6 +134,8 @@ export interface PlayerState {
   status: PlayerStatus;
   isTurn: boolean;
   isHost: boolean;
+  /** 玩家回合阶段（特殊卡效果结算状态机） */
+  turnStage: PlayerTurnStage;
   flags: PlayerFlags;
   /** 积分赛持有币数（初始 10） */
   coins: number;
