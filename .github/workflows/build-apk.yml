@@ -25,11 +25,14 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      # 用 runner 自带的 sdkmanager 安装 android-36 平台与 build-tools（比第三方 action 稳定）
+      # 用绝对路径定位 sdkmanager（不依赖 PATH），安装 android-36；已存在则幂等跳过
       - name: Install Android SDK 36
         run: |
-          yes | sudo sdkmanager --licenses > /dev/null || true
-          sudo sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          SM=$(find /usr/local/lib/android/sdk -name sdkmanager 2>/dev/null | grep cmdline-tools | head -1)
+          echo "SDKMANAGER=$SM"
+          test -n "$SM"
+          yes | "$SM" --licenses > /dev/null 2>&1 || true
+          yes | "$SM" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Install dependencies (monorepo)
         run: npm ci
