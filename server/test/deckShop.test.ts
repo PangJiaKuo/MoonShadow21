@@ -34,11 +34,11 @@ describe('卡组（decks）', () => {
     assert.ok(cards.cards.every((c) => c.base === true));
   });
 
-  it('商城含 10 件商品，单价 100，初始均未拥有', () => {
+  it('商城含全部特殊卡商品，单价 100，初始均未拥有', () => {
     const u = createUser('shopuser', 'h');
     assert.ok(u);
     const shop = getShop(u.id);
-    assert.equal(shop.items.length, 10);
+    assert.ok(shop.items.length >= 10); // 创始系列 10 张 + 书院奇谈 13 张
     assert.ok(shop.items.every((i) => i.price === 100 && !i.owned));
   });
 });

@@ -21,6 +21,9 @@ const TYPE_ZH: Record<EffectType, string> = {
   doubleOrNothing: '加倍',
   forceRedraw: '强制重抽',
   fixedValue: '固定点数',
+  adjustAll: '全牌增减',
+  removeOpponentCard: '移除对手牌',
+  fillTo21: '补到21',
   raise: '加注',
 };
 
@@ -50,7 +53,7 @@ export function SpecialDrawModal({
   const art = CARD_ART[card.defId];
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 p-4">
       <motion.div
         className={`w-full max-w-sm gold-frame rounded-2xl bg-felt/95 p-6 shadow-gold ring-1 ${rarity?.ring ?? ''} max-h-[92vh] overflow-y-auto`}
         initial={{ opacity: 0, scale: 0.85, y: 24 }}

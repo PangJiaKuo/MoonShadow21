@@ -12,6 +12,8 @@ import { CollectionPage } from './components/CollectionPage';
 import { DeckPage } from './components/DeckPage';
 import { ShopPage } from './components/ShopPage';
 import { isNative } from './isNative';
+import { initAudio, tryStartBgm } from './audio/sound';
+import { MusicControl } from './components/MusicControl';
 
 export default function App() {
   const screen = useGameStore((s) => s.screen);
@@ -23,6 +25,18 @@ export default function App() {
   useEffect(() => {
     if (authHydrated) hydrate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 背景音乐：浏览器要求用户交互后才能出声，首次点击/按键时启动循环 BGM
+  useEffect(() => {
+    initAudio();
+    const start = () => tryStartBgm();
+    window.addEventListener('pointerdown', start, { once: true });
+    window.addEventListener('keydown', start, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('keydown', start);
+    };
   }, []);
 
   useEffect(() => {
@@ -70,6 +84,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-abyss bg-radial-gold text-parchment">
       {screen === 'menu' ? <Menu /> : screen === 'lobby' ? <Lobby /> : screen === 'table' ? <Table /> : screen === 'auth' ? <AuthPage /> : screen === 'deck' ? <DeckPage /> : screen === 'shop' ? <ShopPage /> : screen === 'catalog' ? <CatalogPage /> : <CollectionPage />}
+      <MusicControl />
     </div>
   );
 }

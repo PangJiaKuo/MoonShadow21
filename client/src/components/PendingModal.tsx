@@ -17,7 +17,7 @@ export function PendingModal({ game }: { game: GameState }) {
   if (pending.kind === 'raise') {
     const max = pending.max ?? 0;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/80 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
         <motion.div
           className="card-face gold-frame rounded-2xl p-6 w-full max-w-md shadow-gold flex flex-col gap-4"
           initial={{ opacity: 0, scale: 0.92, y: 12 }}
@@ -54,7 +54,7 @@ export function PendingModal({ game }: { game: GameState }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
       <motion.div
         className="card-face gold-frame rounded-2xl p-6 w-full max-w-md shadow-gold flex flex-col gap-4"
         initial={{ opacity: 0, scale: 0.92, y: 12 }}
@@ -75,6 +75,7 @@ export function PendingModal({ game }: { game: GameState }) {
                   decisionId: pending.id,
                   optionId: o.id,
                   value: o.value,
+                  payload: o.payload,
                 })
               }
               className="px-4 py-2 rounded-lg font-display tracking-wider text-sm gold-frame text-gold hover:bg-brass/20 active:scale-95 transition"

@@ -152,13 +152,17 @@ export function DeckPage() {
                           key={c.cardId}
                           className={`card-face relative overflow-hidden rounded-lg p-2.5 gold-frame ring-1 flex flex-col items-center ${r?.ring ?? 'ring-amber-400/80'} ${isSelected ? 'ring-2 ring-brass bg-brass/10' : ''}`}
                         >
-                          <img
-                            src={CARD_ART[c.cardId] ?? '/cards/silver_moon.jpg'}
-                            alt=""
-                            className="absolute inset-0 w-full h-full object-cover"
-                            draggable={false}
-                          />
-                          <div className="absolute inset-0 bg-abyss/40" />
+                          {CARD_ART[c.cardId] && (
+                            <>
+                              <img
+                                src={CARD_ART[c.cardId]}
+                                alt=""
+                                className="absolute inset-0 w-full h-full object-cover"
+                                draggable={false}
+                              />
+                              <div className="absolute inset-0 bg-abyss/40" />
+                            </>
+                          )}
                           <div className="relative z-10 w-full flex flex-col items-center">
                             <span className="font-display text-gold text-sm leading-tight text-center">「{c.name}」</span>
                             <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-current mt-1 ${r?.text ?? ''}`}>
@@ -206,7 +210,7 @@ export function DeckPage() {
                     } ${t ? 'ring-2 ring-brass bg-brass/10 cursor-pointer hover:scale-105' : ''}`}
                   >
                     {(() => {
-                      const art = c.base ? SUIT_ART[c.suit] : CARD_ART[c.cardId] ?? '/cards/silver_moon.jpg';
+                      const art = c.base ? SUIT_ART[c.suit] : CARD_ART[c.cardId];
                       if (!art) return null;
                       return (
                         <>

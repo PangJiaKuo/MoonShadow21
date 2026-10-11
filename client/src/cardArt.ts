@@ -17,6 +17,19 @@ export const CARD_ART: Record<string, string> = {
   gambler: '/cards/gambler.jpg',
   night_watch: '/cards/night_watch.jpg',
   imperial_decree: '/cards/imperial_decree.jpg',
+  note: '/cards/note.jpg',
+  canteen: '/cards/canteen.jpg',
+  alarm_clock: '/cards/alarm_clock.jpg',
+  elective: '/cards/elective.jpg',
+  club: '/cards/club.jpg',
+  roommate: '/cards/roommate.jpg',
+  group_work: '/cards/group_work.jpg',
+  all_nighter: '/cards/all_nighter.jpg',
+  scholarship: '/cards/scholarship.jpg',
+  thesis: '/cards/thesis.jpg',
+  postgrad: '/cards/postgrad.jpg',
+  dropout: '/cards/dropout.jpg',
+  graduation: '/cards/graduation.jpg',
 };
 
 /** 基础花色底图：suit -> 图片路径（每张花色共用一张朴素底图） */

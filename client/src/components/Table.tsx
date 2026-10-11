@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CardInstance } from '@moon21/shared';
 import { chooseAction } from '@moon21/engine';
 import { useGameStore } from '../store/useGameStore';
+import { playStandSfx } from '../audio/sound';
 import { PlayerArea } from './PlayerArea';
 import { ActionBar } from './ActionBar';
 import { ResultOverlay } from './ResultOverlay';
@@ -32,6 +33,24 @@ export function Table() {
     const t = setTimeout(() => dispatch(action), 650);
     return () => clearTimeout(t);
   }, [game, aiPlayerId, online, dispatch]);
+
+  // 停牌 / 爆牌自动停牌音效：任意玩家进入 stood / busted 状态时播放（热座、人机、联机统一覆盖）
+  const statusKey = game.players.map((p) => `${p.id}:${p.status}`).join(',');
+  const prevStatusKey = useRef(statusKey);
+  useEffect(() => {
+    if (statusKey === prevStatusKey.current) return;
+    const before = new Map(
+      prevStatusKey.current
+        .split(',')
+        .filter(Boolean)
+        .map((s) => s.split(':') as [string, string]),
+    );
+    const entered = game.players.some(
+      (p) => (p.status === 'stood' || p.status === 'busted') && before.get(p.id) !== p.status,
+    );
+    if (entered) playStandSfx();
+    prevStatusKey.current = statusKey;
+  }, [statusKey, game.players]);
 
   // 自己放在底部，其余玩家放顶部（联机/人机按我的座位定位；热座轮到谁就把谁放底部主区域）
   let bottom: typeof game.players[number];

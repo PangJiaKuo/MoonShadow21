@@ -36,6 +36,9 @@ export type EffectType =
   | 'doubleOrNothing'  // 加倍（赌徒）
   | 'forceRedraw'      // 强制对手重抽（守夜人）
   | 'fixedValue'      // 固定点数+限制（皇帝密令）
+  | 'adjustAll'       // 全手牌点数 ±n（论文）
+  | 'removeOpponentCard' // 弃自己并移除对手 1 张亮牌（退学）
+  | 'fillTo21'        // 补到 21 的差值（毕业）
   | 'raise';          // 积分赛加注（停牌后可选）
 
 /** 特殊卡定义（独立牌池，不洗入基础 54 张） */
@@ -183,6 +186,8 @@ export type GameAction =
       decisionId: string;
       optionId: string;
       value?: number;
+      /** 目标信息（选目标牌/玩家时用），透传自 DecisionOption.payload */
+      payload?: { cardUid?: string; playerId?: string; uid?: string };
     };
 
 /** 决策选项（模态框中的可选项） */

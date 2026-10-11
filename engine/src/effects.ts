@@ -88,10 +88,16 @@ function drawTopInto(g: GameState, pid: string): CardInstance | null {
   return top;
 }
 
-/** 该玩家特殊卡是否被上一家的沉默压制 */
+/** 该玩家特殊卡是否被上一家的沉默压制（沉默 100%，室友按 chance 概率） */
 export function silencedByOpponent(g: GameState, pid: string): boolean {
   const opp = prevPlayer(g, pid);
-  return !!opp && opp.hand.some((c) => SPECIAL_BY_ID.get(c.defId)?.effect.type === 'negate');
+  if (!opp) return false;
+  return opp.hand.some((c) => {
+    const def = SPECIAL_BY_ID.get(c.defId);
+    if (!def || def.effect.type !== 'negate') return false;
+    const chance = (def.effect.params.chance as number | undefined) ?? 1;
+    return Math.random() < chance;
+  });
 }
 
 function mkPending(
@@ -134,6 +140,19 @@ interface HandlerResult {
 
 function adjustValue(ctx: HandlerCtx): HandlerResult {
   const { g, pid, card, params } = ctx;
+  if (params.condition === 'handGE3') {
+    const me = playerOf(g, pid);
+    if (me.hand.length < 3) {
+      card.value = 0;
+      me.score = scoreOf(me.hand);
+      g.log.push(`${me.name} 的 ${card.name} 手牌不足 3 张，点数无效`);
+      return { g };
+    }
+    const values = (params.values as number[]) ?? [];
+    const options = values.map((v) => ({ id: String(v), label: `${v} 点`, value: v }));
+    options.push({ id: 'skip', label: '不使用效果（保持 0 点）', value: 0 });
+    return mkPending(g, pid, card.uid, 'adjustValue', 'adjustValue', `设定 ${card.name} 点数`, '手牌不少于 3 张：选择此牌的有效点数', options);
+  }
   if (params.condition === 'allSun') {
     const others = playerOf(g, pid).hand.filter((c) => c.uid !== card.uid);
     const allSun = others.length > 0 && others.every((c) => c.suit === 'sun');
@@ -144,6 +163,13 @@ function adjustValue(ctx: HandlerCtx): HandlerResult {
       return { g };
     }
     const values = (params.values as number[]) ?? [];
+    const options = values.map((v) => ({ id: String(v), label: `${v} 点`, value: v }));
+    options.push({ id: 'skip', label: '不使用效果（保持 0 点）', value: 0 });
+    return mkPending(g, pid, card.uid, 'adjustValue', 'adjustValue', `设定 ${card.name} 点数`, '选择此牌的有效点数', options);
+  }
+  // 无条件的固定值列表（选修课 2-5 或 8-11）
+  if (Array.isArray(params.values) && params.values.length > 0) {
+    const values = params.values as number[];
     const options = values.map((v) => ({ id: String(v), label: `${v} 点`, value: v }));
     options.push({ id: 'skip', label: '不使用效果（保持 0 点）', value: 0 });
     return mkPending(g, pid, card.uid, 'adjustValue', 'adjustValue', `设定 ${card.name} 点数`, '选择此牌的有效点数', options);
@@ -220,6 +246,25 @@ function discardRedraw(ctx: HandlerCtx): HandlerResult {
 
 function doubleOrNothing(ctx: HandlerCtx): HandlerResult {
   const { g, pid, card } = ctx;
+  const me = playerOf(g, pid);
+  // 奖学金（auto）：抽到时自动再抽一张，未爆则总点数 ×2
+  if (ctx.params.auto === true) {
+    const drawn = drawTopInto(g, pid);
+    me.flags.unresolvedDraw = me.flags.unresolvedDraw.filter((u) => u !== card.uid);
+    me.score = scoreOf(me.hand);
+    if (me.score <= g.config.targetScore) {
+      me.score = me.score * 2;
+      g.log.push(`${me.name} 的 ${card.name}：自动再抽${drawn ? ` ${drawn.name}` : ''}，总点数 ×2 → ${me.score}`);
+      if (me.score > g.config.targetScore) {
+        me.status = 'stood';
+        g.log.push(`${me.name} 翻倍后爆牌（${me.score}），自动停牌`);
+      }
+    } else {
+      me.status = 'stood';
+      g.log.push(`${me.name} 的 ${card.name}：自动再抽${drawn ? ` ${drawn.name}` : ''}后爆牌（${me.score}），自动停牌`);
+    }
+    return { g };
+  }
   const options = [
     { id: 'yes', label: '声明加倍（风险：爆牌出局）' },
     { id: 'no', label: '放弃加倍' },
@@ -248,6 +293,50 @@ function fixedValue(ctx: HandlerCtx): HandlerResult {
   return mkPending(g, pid, card.uid, 'fixedValue', 'pickOption', `${card.name}：是否使用`, `使用后固定 ${value} 点，本回合不可停牌`, options);
 }
 
+/** 论文：全手牌点数 ±1（玩家选择方向）。 */
+function adjustAll(ctx: HandlerCtx): HandlerResult {
+  const { g, pid, card } = ctx;
+  const options: PendingDecision['options'] = [
+    { id: 'up', label: '全手牌 +1' },
+    { id: 'down', label: '全手牌 -1' },
+    { id: 'skip', label: '不使用效果' },
+  ];
+  return mkPending(g, pid, card.uid, 'adjustAll', 'pickOption', `${card.name}：全手牌 ±1`, '选择所有手牌点数 +1 或 -1（最低 1 点）', options);
+}
+
+/** 退学：弃自己，选择移除上一家一张亮牌。 */
+function removeOpponentCard(ctx: HandlerCtx): HandlerResult {
+  const { g, pid, card } = ctx;
+  const me = playerOf(g, pid);
+  const opp = prevPlayer(g, pid);
+  if (!opp) return { g };
+  const revealed = opp.hand.filter((c) => !c.faceDown);
+  if (revealed.length === 0) {
+    g.log.push(`${me.name} 的 ${card.name}：上一家无亮牌，效果无效`);
+    return { g };
+  }
+  const options = revealed.map((c, i) => ({
+    id: `r${i}`,
+    label: `移除 ${opp.name} 的 ${c.name}（${c.value} 点）`,
+    payload: { uid: c.uid },
+  }));
+  options.push({ id: 'skip', label: '不使用效果', payload: { uid: '' } });
+  return mkPending(g, pid, card.uid, 'removeOpponentCard', 'pickOption', `${card.name}：移除上一家的亮牌`, `选择上一家 ${opp.name} 的一张亮牌移除（此牌自身弃置）`, options);
+}
+
+/** 毕业：此牌点数自动补为「21 - 其余手牌点数之和」（差值非正则取 0）。 */
+function fillTo21(ctx: HandlerCtx): HandlerResult {
+  const { g, pid, card } = ctx;
+  const me = playerOf(g, pid);
+  const others = me.hand.reduce((s, c) => (c.uid === card.uid || c.pendingValue ? s : s + c.value), 0);
+  const gap = g.config.targetScore - others;
+  card.value = gap > 0 ? gap : 0;
+  card.pendingValue = false;
+  me.score = scoreOf(me.hand);
+  g.log.push(`${me.name} 的 ${card.name}：补到 21 的差值，点数 ${card.value}（其余手牌 ${others} 点）`);
+  return { g };
+}
+
 const HANDLERS: Record<EffectType, (ctx: HandlerCtx) => HandlerResult> = {
   adjustValue,
   swapCard,
@@ -262,6 +351,9 @@ const HANDLERS: Record<EffectType, (ctx: HandlerCtx) => HandlerResult> = {
   doubleOrNothing,
   forceRedraw,
   fixedValue,
+  adjustAll,
+  removeOpponentCard,
+  fillTo21,
   // 积分赛加注由游戏机制触发（不通过特殊卡 HANDLERS），仅满足 Record<EffectType> 类型完整性
   raise: (ctx) => ({ g: ctx.g }),
 };
@@ -295,14 +387,46 @@ export function processUnresolvedDraw(g: GameState, pid: string): GameState {
   return g;
 }
 
-/** 停牌触发 OnStand 效果（回溯）。 */
+/** 停牌触发 OnStand 效果（回溯 / 闹钟 / 通宵）。 */
 export function handleOnStand(g: GameState, pid: string): HandlerResult {
   const me = playerOf(g, pid);
   const rewind = me.hand.find((c) => SPECIAL_BY_ID.get(c.defId)?.effect.type === 'discardRedraw');
   if (!rewind) return { g };
   if (me.flags.used[rewind.defId]) return { g };
   if (silencedByOpponent(g, pid)) return { g };
-  return HANDLERS.discardRedraw({ g, pid, card: rewind, def: SPECIAL_BY_ID.get(rewind.defId)!, params: SPECIAL_BY_ID.get(rewind.defId)!.effect.params });
+  const params = SPECIAL_BY_ID.get(rewind.defId)!.effect.params;
+  // 闹钟 / 通宵：弃自己（通宵另令上一家弃一张重抽），无选择，自动执行
+  if (params.discardSelf === true) {
+    me.hand = me.hand.filter((c) => c.uid !== rewind.uid);
+    g.log.push(`${me.name} 弃置 ${rewind.name}`);
+    if (params.targetOpponent === true) {
+      const opp = prevPlayer(g, pid);
+      if (opp) {
+        const targetCard = opp.hand.find((c) => c.faceDown) ?? opp.hand[0];
+        if (targetCard) {
+          opp.hand = opp.hand.filter((c) => c.uid !== targetCard.uid);
+          const drawn = drawTopInto(g, opp.id);
+          opp.score = scoreOf(opp.hand);
+          g.log.push(`${me.name} 令上一家 ${opp.name} 弃一张并重抽${drawn ? `：${drawn.name}` : ''}`);
+          if (opp.score > g.config.targetScore) {
+            opp.status = 'stood';
+            g.log.push(`${opp.name} 爆牌（${opp.score}），自动停牌`);
+          }
+        }
+      }
+    } else {
+      const drawn = drawTopInto(g, pid);
+      me.score = scoreOf(me.hand);
+      g.log.push(`${me.name} 抽一张${drawn ? `：${drawn.name}` : ''}`);
+      if (me.score > g.config.targetScore) {
+        me.status = 'stood';
+        g.log.push(`${me.name} 爆牌（${me.score}），自动停牌`);
+      }
+    }
+    me.flags.used[rewind.defId] = true;
+    return { g };
+  }
+  return HANDLERS.discardRedraw({ g, pid, card: rewind, def: SPECIAL_BY_ID.get(rewind.defId)!, params });
 }
 
 /** 结算前触发 OnCompare 效果（守夜人）。 */
@@ -504,6 +628,40 @@ export function resolveDecision(g: GameState, action: Extract<GameAction, { type
         }
       }
       me.flags.used[card.defId] = true;
+      break;
+    }
+    case 'adjustAll': {
+      const dir = action.optionId === 'up' ? 1 : action.optionId === 'down' ? -1 : 0;
+      if (dir === 0) {
+        card.value = 0;
+      } else {
+        for (const c of me.hand) {
+          if (c.pendingValue) continue;
+          c.value = Math.max(1, c.value + dir);
+        }
+        g.log.push(`${me.name} 的 ${card.name}：全手牌${dir > 0 ? '+' : ''}${dir} 点`);
+      }
+      me.score = scoreOf(me.hand);
+      removeUnresolved();
+      checkBust();
+      break;
+    }
+    case 'removeOpponentCard': {
+      const targetUid = opt?.payload?.uid;
+      const opp = prevPlayer(g, pd.playerId);
+      if (targetUid && opp) {
+        const tc = opp.hand.find((c) => c.uid === targetUid);
+        if (tc) {
+          me.hand = me.hand.filter((c) => c.uid !== card.uid);
+          opp.hand = opp.hand.filter((c) => c.uid !== tc.uid);
+          opp.score = scoreOf(opp.hand);
+          g.log.push(`${me.name} 弃置 ${card.name}，移除上一家 ${opp.name} 的 ${tc.name}（${tc.value} 点）`);
+        }
+      } else {
+        card.value = 0;
+      }
+      removeUnresolved();
+      checkBust();
       break;
     }
     default:

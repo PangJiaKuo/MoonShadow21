@@ -20,6 +20,9 @@ const TYPE_ZH: Record<EffectType, string> = {
   doubleOrNothing: '加倍',
   forceRedraw: '强制重抽',
   fixedValue: '固定点数',
+  adjustAll: '全牌增减',
+  removeOpponentCard: '移除对手牌',
+  fillTo21: '补到21',
   raise: '加注',
 };
 

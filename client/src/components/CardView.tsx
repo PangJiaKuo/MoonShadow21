@@ -84,7 +84,7 @@ export function CardView({ card, faceUp, size = 'md', onInspect }: Props) {
           transition={{ duration: 0.2 }}
         >
           {(() => {
-            const art = isSpecial ? CARD_ART[card.defId] ?? '/cards/silver_moon.jpg' : SUIT_ART[card.suit];
+            const art = isSpecial ? CARD_ART[card.defId] : SUIT_ART[card.suit];
             if (!art) return null;
             return (
               <>
