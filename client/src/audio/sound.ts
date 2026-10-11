@@ -85,6 +85,12 @@ export function getBgmVolume(): number {
   return bgm?.volume ?? 0.35;
 }
 
+/** 返回当前 BGM 元素（供外部监听播放错误等）。 */
+export function getBgmElement(): HTMLAudioElement | null {
+  initAudio();
+  return bgm;
+}
+
 /** 切换背景乐来源（本地文件/默认曲），播放中则立即切换并继续循环。 */
 export function setBgmSource(url: string, name: string) {
   initAudio();

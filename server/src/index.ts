@@ -34,6 +34,7 @@ import { dbStats, getDeckCards, initDb } from './db';
 import { createAuthRouter, getUserIdByToken } from './auth';
 import { createCollectionRouter } from './collection';
 import { createShopRouter } from './shop';
+import { createMusicRouter } from './music';
 import { WIN_COINS, rewardWinnersCore } from './reward';
 
 const app = express();
@@ -56,6 +57,7 @@ initDb();
 app.use('/api', createAuthRouter());
 app.use('/api', createCollectionRouter());
 app.use('/api', createShopRouter());
+app.use('/api', createMusicRouter());
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'moon21-server', stage: 4, db: dbStats() });
